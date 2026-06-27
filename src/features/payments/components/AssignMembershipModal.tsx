@@ -8,7 +8,7 @@ import { useCreateSubscriptionAndPayment, type CreateSubscriptionAndPaymentInput
 import { useGymSettings } from '@/features/settings/hooks/useGymSettings'
 import { formatMoney } from '@/utils/currency'
 import { BusquedaDNI } from '@/features/customers/components/BusquedaDNI'
-import { Award, User, DollarSign, Calendar, CreditCard, X, Save, AlertTriangle, Search, Plus } from 'lucide-react'
+import { Award, User, DollarSign, Calendar, CreditCard, X, Save, AlertTriangle, Search, Plus, RefreshCw } from 'lucide-react'
 
 const assignSchema = z.object({
   customer_id: z.string().min(1, 'Debe seleccionar un cliente'),
@@ -343,14 +343,24 @@ export const AssignMembershipModal: React.FC<AssignMembershipModalProps> = ({
                           />
                         </div>
                         <div>
-                          <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Código de Acceso</label>
-                          <input
-                            type="text"
-                            className="w-full bg-background border border-border/85 rounded-lg py-1.5 px-3 text-sm focus:outline-none focus:border-primary transition-all mt-0.5"
-                            placeholder="Ej: 100234"
-                            value={quickAccessCode}
-                            onChange={(e) => setQuickAccessCode(e.target.value)}
-                          />
+                          <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">PIN / Código (Generado)</label>
+                          <div className="flex space-x-1.5 mt-0.5">
+                            <input
+                              type="text"
+                              className="flex-1 bg-background/50 border border-border/80 rounded-lg py-1.5 px-3 text-sm focus:outline-none transition-all text-muted-foreground"
+                              value={quickAccessCode}
+                              readOnly
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setQuickAccessCode(Math.floor(100000 + Math.random() * 900000).toString())}
+                              className="px-2.5 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/15 hover:border-primary/25 rounded-lg text-xs font-bold flex items-center space-x-1 transition-all active:scale-[0.98] cursor-pointer"
+                              title="Regenerar PIN aleatorio"
+                            >
+                              <RefreshCw className="h-3 w-3" />
+                              <span>Generar</span>
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </>
@@ -394,8 +404,11 @@ export const AssignMembershipModal: React.FC<AssignMembershipModalProps> = ({
                   </div>
                   <button
                     type="button"
-                    onClick={() => setIsCreatingCustomer(true)}
-                    className="px-3 py-2 bg-primary/10 border border-primary/20 text-primary hover:bg-primary/25 rounded-xl text-sm font-semibold flex items-center space-x-1 transition-all"
+                    onClick={() => {
+                      setIsCreatingCustomer(true)
+                      setQuickAccessCode(Math.floor(100000 + Math.random() * 900000).toString())
+                    }}
+                    className="px-3 py-2 bg-primary/10 border border-primary/20 text-primary hover:bg-primary/25 rounded-xl text-sm font-semibold flex items-center space-x-1 transition-all cursor-pointer"
                   >
                     <Plus className="h-4 w-4" />
                     <span>Nuevo</span>

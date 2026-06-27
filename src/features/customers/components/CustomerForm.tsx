@@ -5,7 +5,7 @@ import * as z from 'zod'
 import type { CreateCustomerInput, Customer } from '../hooks/useCustomers'
 import { supabase } from '@/config/supabase'
 import { BusquedaDNI } from './BusquedaDNI'
-import { User, Mail, Phone, Calendar, Key, FileText, Camera, AlertCircle, X, Save } from 'lucide-react'
+import { User, Mail, Phone, Calendar, Key, FileText, Camera, AlertCircle, X, Save, RefreshCw } from 'lucide-react'
 
 const customerSchema = z.object({
   dni: z.string().max(20).optional().or(z.literal('')),
@@ -67,7 +67,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
           email: '',
           phone: '',
           birth_date: '',
-          access_code: '',
+          access_code: Math.floor(100000 + Math.random() * 900000).toString(),
           status: 'active',
           notes: '',
           photo_url: '',
@@ -281,18 +281,30 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
         {/* Código de Acceso Físico */}
         <div className="space-y-1.5">
           <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Código de Acceso Físico (RFID/PIN/QR)
+            PIN / Código de Acceso (Generado)
           </label>
-          <div className="relative">
-            <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground pointer-events-none">
-              <Key className="h-4 w-4" />
-            </span>
-            <input
-              type="text"
-              className="w-full bg-secondary/40 border border-border/80 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all placeholder:text-muted-foreground/60"
-              placeholder="Ej: 10938472"
-              {...register('access_code')}
-            />
+          <div className="flex space-x-2">
+            <div className="relative flex-1">
+              <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground pointer-events-none">
+                <Key className="h-4 w-4" />
+              </span>
+              <input
+                type="text"
+                className="w-full bg-secondary/30 border border-border/80 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none transition-all text-muted-foreground"
+                placeholder="PIN"
+                readOnly
+                {...register('access_code')}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => setValue('access_code', Math.floor(100000 + Math.random() * 900000).toString())}
+              className="px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 hover:border-primary/30 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition-all active:scale-[0.98] cursor-pointer"
+              title="Generar PIN aleatorio de 6 dígitos"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              <span>Generar</span>
+            </button>
           </div>
           {errors.access_code && (
             <p className="text-xs text-destructive mt-1 font-medium">{errors.access_code.message}</p>

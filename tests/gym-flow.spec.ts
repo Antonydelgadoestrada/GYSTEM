@@ -159,7 +159,6 @@ test.describe('Flujo completo de GYMFLOW', () => {
     // Rellenar datos rápidos del cliente
     await page.getByPlaceholder('Nombre y Apellidos').fill(customerName);
     await page.getByPlaceholder('987654321').fill('999888777');
-    await page.getByPlaceholder('Ej: 100234').fill(`PIN${timestamp}`);
 
     // Clic en Crear y Seleccionar
     await page.getByRole('button', { name: 'Crear y Seleccionar' }).click();
