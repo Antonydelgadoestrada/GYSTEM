@@ -16,13 +16,17 @@ import {
   MessageSquare,
   AlertTriangle,
   History,
-  HelpCircle
+  HelpCircle,
+  Plus,
+  RefreshCw
 } from 'lucide-react'
+import { AssignMembershipModal } from '@/features/payments/components/AssignMembershipModal'
 
 export const CustomerDetailsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [gymName, setGymName] = useState('Mi Gimnasio')
+  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false)
   
   // Obtener configuración del gimnasio (moneda, etc)
   const { data: settings } = useGymSettings()
@@ -235,18 +239,36 @@ export const CustomerDetailsPage: React.FC = () => {
                     <span className="text-sm text-muted-foreground font-medium">Costo Total</span>
                     <h5 className="text-xl font-bold">{formatMoney(activeMembership.memberships.price, settings)}</h5>
                   </div>
-                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                    Vigente
-                  </span>
+                  <div className="flex flex-col items-end space-y-2">
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                      Vigente
+                    </span>
+                    <button
+                      onClick={() => setIsAssignModalOpen(true)}
+                      className="bg-primary hover:bg-primary/95 text-primary-foreground font-semibold px-3 py-1.5 rounded-xl text-[11px] flex items-center justify-center space-x-1 transition-all active:scale-[0.98] shadow-md shadow-primary/15 cursor-pointer"
+                    >
+                      <RefreshCw className="h-3 w-3 animate-hover-spin" />
+                      <span>Renovar</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             ) : (
-              <div className="p-6 text-center border border-dashed border-border rounded-2xl space-y-3">
+              <div className="p-6 text-center border border-dashed border-border rounded-2xl space-y-4">
                 <HelpCircle className="h-8 w-8 text-muted-foreground mx-auto opacity-60" />
-                <h4 className="font-semibold text-sm">Sin membresía vigente</h4>
-                <p className="text-xs text-muted-foreground max-w-xs mx-auto">
-                  El cliente no cuenta con ningún pase de entrenamiento activo en este momento.
-                </p>
+                <div className="space-y-1">
+                  <h4 className="font-semibold text-sm text-foreground">Sin membresía vigente</h4>
+                  <p className="text-xs text-muted-foreground max-w-xs mx-auto">
+                    El cliente no cuenta con ningún pase de entrenamiento activo en este momento.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setIsAssignModalOpen(true)}
+                  className="bg-primary hover:bg-primary/95 text-primary-foreground font-semibold px-4 py-2 rounded-xl text-xs inline-flex items-center justify-center space-x-1.5 transition-all active:scale-[0.98] shadow-lg shadow-primary/20 cursor-pointer"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>Asignar Membresía</span>
+                </button>
               </div>
             )}
           </div>
@@ -346,6 +368,13 @@ export const CustomerDetailsPage: React.FC = () => {
 
         </div>
       </div>
+
+      {isAssignModalOpen && (
+        <AssignMembershipModal
+          onClose={() => setIsAssignModalOpen(false)}
+          preselectedCustomerId={customer.id}
+        />
+      )}
     </div>
   )
 }
