@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Confirma tu registro en GYMFLOW</title>
+  <style>
+    /* Reset de estilos */
+    body, table, td, a {
+      text-decoration: none;
+      -webkit-text-size-adjust: 100%;
+      -ms-text-size-adjust: 100%;
+    }
+    table, td {
+      mso-table-lspace: 0pt;
+      mso-table-rspace: 0pt;
+    }
+    img {
+      -ms-interpolation-mode: bicubic;
+      border: 0;
+      height: auto;
+      line-height: 100%;
+      outline: none;
+    }
+    table {
+      border-collapse: collapse !important;
+    }
+    body {
+      height: 100% !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      width: 100% !important;
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
+      background-color: #0b0f19;
+      color: #f1f5f9;
+    }
+
+    /* Estilos principales */
+    .wrapper {
+      width: 100%;
+      table-layout: fixed;
+      background-color: #0b0f19;
+      padding-bottom: 40px;
+      padding-top: 40px;
+    }
+    .main-table {
+      background-color: #111827;
+      margin: 0 auto;
+      width: 100%;
+      max-width: 550px;
+      border-radius: 16px;
+      border: 1px solid #1f2937;
+      overflow: hidden;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
+    }
+    .content-padding {
+      padding: 40px 30px;
+    }
+    .logo-container {
+      text-align: center;
+      padding-bottom: 25px;
+    }
+    .logo-text {
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      background: linear-gradient(to right, #a78bfa, #6366f1);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      color: #6366f1; /* Fallback */
+      margin: 0;
+    }
+    .subtitle {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: #9ca3af;
+      margin-top: 4px;
+      font-weight: 600;
+    }
+    .divider {
+      height: 1px;
+      background-color: #1f2937;
+      margin: 25px 0;
+    }
+    .title {
+      font-size: 22px;
+      font-weight: 700;
+      color: #ffffff;
+      margin: 0 0 16px 0;
+      text-align: center;
+    }
+    .paragraph {
+      font-size: 15px;
+      line-height: 1.6;
+      color: #9ca3af;
+      margin: 0 0 24px 0;
+      text-align: center;
+    }
+    .btn-container {
+      text-align: center;
+      margin: 30px 0;
+    }
+    .btn-action {
+      display: inline-block;
+      background: linear-gradient(135deg, #8b5cf6 0%, #4f46e5 100%);
+      color: #ffffff !important;
+      font-size: 15px;
+      font-weight: 600;
+      padding: 14px 28px;
+      border-radius: 12px;
+      box-shadow: 0 4px 14px 0 rgba(99, 102, 241, 0.3);
+      transition: all 0.2s ease;
+    }
+    .footer-text {
+      font-size: 12px;
+      line-height: 1.5;
+      color: #6b7280;
+      text-align: center;
+      margin: 0;
+    }
+    .link-alt {
+      color: #6366f1;
+      text-decoration: underline;
+    }
+    .card-info {
+      background-color: #1f2937;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 24px;
+      border-left: 4px solid #6366f1;
+    }
+    .card-info-text {
+      font-size: 13px;
+      color: #d1d5db;
+      margin: 0;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <table class="main-table">
+      <tr>
+        <td class="content-padding">
+          
+          <!-- Logo / Header -->
+          <div class="logo-container">
+            <h1 class="logo-text">GYMFLOW</h1>
+            <div class="subtitle">SaaS de Gestión Inteligente</div>
+          </div>
+          
+          <div class="divider"></div>
+          
+          <!-- Contenido Principal -->
+          <h2 class="title">¡Bienvenido a la comunidad, Atleta!</h2>
+          
+          <p class="paragraph">
+            Estamos encantados de tenerte a bordo. Tu cuenta de administrador y tu gimnasio se han creado correctamente en nuestra plataforma. 
+            Para comenzar a usar tu panel de control, por favor confirma tu dirección de correo electrónico haciendo clic en el botón de abajo.
+          </p>
+          
+          <!-- Botón de Confirmación -->
+          <div class="btn-container">
+            <a href="{{ .ConfirmationURL }}" class="btn-action" target="_blank">Confirmar Cuenta</a>
+          </div>
+
+          <!-- Tarjeta Informativa de Seguridad -->
+          <div class="card-info">
+            <p class="card-info-text">
+              <strong>¿Por qué este paso?</strong> La confirmación por correo garantiza la autenticidad de tu cuenta de administrador y protege la privacidad de los datos de tus atletas y membresías.
+            </p>
+          </div>
+          
+          <p class="paragraph" style="font-size: 13px; margin-bottom: 0;">
+            Si el botón no funciona, puedes copiar y pegar el siguiente enlace en tu navegador:<br>
+            <a href="{{ .ConfirmationURL }}" class="link-alt" style="word-break: break-all;">{{ .ConfirmationURL }}</a>
+          </p>
+          
+          <div class="divider"></div>
+          
+          <!-- Footer -->
+          <p class="footer-text">
+            Este es un correo automático de seguridad de GYMFLOW.<br>
+            Si tú no solicitaste este registro, puedes ignorar este mensaje de forma segura.
+          </p>
+          
+        </td>
+      </tr>
+    </table>
+  </div>
+</body>
+</html>

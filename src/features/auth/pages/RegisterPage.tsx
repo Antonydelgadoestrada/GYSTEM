@@ -18,6 +18,7 @@ type RegisterFormInputs = z.infer<typeof registerSchema>
 export const RegisterPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  const [registeredEmail, setRegisteredEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
 
@@ -65,10 +66,8 @@ export const RegisterPage: React.FC = () => {
           .insert({ name: data.gymName })
       }
 
+      setRegisteredEmail(data.email)
       setSuccess(true)
-      setTimeout(() => {
-        navigate('/')
-      }, 3000)
     } catch (err: any) {
       setError(err.message || 'Ocurrió un error al registrar el administrador.')
     } finally {
@@ -94,15 +93,27 @@ export const RegisterPage: React.FC = () => {
 
         <div className="bg-card border border-border/60 rounded-2xl p-8 shadow-2xl backdrop-blur-md">
           {success ? (
-            <div className="text-center space-y-4 py-8">
-              <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 mb-2">
-                <CheckCircle className="h-10 w-10" />
+            <div className="text-center space-y-5 py-4">
+              <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 mb-2 animate-bounce">
+                <Mail className="h-8 w-8" />
               </div>
-              <h2 className="text-2xl font-bold tracking-tight">¡Registro Exitoso!</h2>
-              <p className="text-sm text-muted-foreground">
-                Tu gimnasio y tu cuenta de administrador han sido creados correctamente. 
-                Redirigiéndote al dashboard principal...
+              <h2 className="text-2xl font-bold tracking-tight text-foreground">¡Verifica tu correo!</h2>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Hemos enviado un correo de confirmación a <span className="font-semibold text-primary">{registeredEmail}</span>.
               </p>
+              <div className="text-xs text-muted-foreground leading-relaxed bg-secondary/30 p-4 rounded-xl border border-border/40 text-left space-y-1.5">
+                <p className="font-semibold text-foreground text-center mb-1">Pasos a seguir:</p>
+                <p>1. Ve a tu bandeja de entrada y abre el correo de GYMFLOW.</p>
+                <p>2. Haz clic en el botón de confirmación para activar tu cuenta.</p>
+                <p>3. Regresa aquí e inicia sesión con tus credenciales.</p>
+                <p className="text-[10px] text-muted-foreground/80 mt-2 text-center">(No olvides revisar tu carpeta de spam si no lo encuentras)</p>
+              </div>
+              <button
+                onClick={() => navigate('/login')}
+                className="w-full mt-6 bg-primary hover:bg-primary/95 text-primary-foreground font-semibold py-2.5 rounded-xl text-sm flex items-center justify-center space-x-2 transition-all active:scale-[0.98] shadow-lg shadow-primary/20 cursor-pointer"
+              >
+                <span>Ir al Inicio de Sesión</span>
+              </button>
             </div>
           ) : (
             <>

@@ -15,8 +15,31 @@ test.describe('Flujo completo de GYMFLOW', () => {
   const customerName = `Cliente E2E ${timestamp}`;
 
   test('Debería registrarse, crear membresía, agregar cliente, cobrar membresía y cerrar sesión', async ({ page }) => {
-    // Interceptar llamadas de autenticación de Supabase para evitar requerir confirmación por correo
+    // Interceptar llamadas de registro de Supabase Auth (retorna session: null ya que requiere confirmación)
     await page.route('**/auth/v1/signup', async route => {
+      const json = {
+        user: {
+          id: 'c35c59b4-4966-4594-a573-e486a6cfa1a2',
+          aud: 'authenticated',
+          role: 'authenticated',
+          email: testEmail,
+          email_confirmed_at: null,
+          phone: '',
+          confirmed_at: null,
+          last_sign_in_at: null,
+          app_metadata: { provider: 'email', providers: ['email'] },
+          user_metadata: { role: 'admin', full_name: adminName },
+          identities: [],
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        },
+        session: null
+      };
+      await route.fulfill({ json });
+    });
+
+    // Interceptar llamadas de inicio de sesión de Supabase Auth para simular login exitoso
+    await page.route('**/auth/v1/token?grant_type=password', async route => {
       const json = {
         access_token: supabaseAnonKey,
         token_type: 'bearer',
@@ -26,13 +49,13 @@ test.describe('Flujo completo de GYMFLOW', () => {
           id: 'c35c59b4-4966-4594-a573-e486a6cfa1a2',
           aud: 'authenticated',
           role: 'authenticated',
-          email: 'n4sh3333@gmail.com',
+          email: testEmail,
           email_confirmed_at: new Date().toISOString(),
           phone: '',
           confirmed_at: new Date().toISOString(),
           last_sign_in_at: new Date().toISOString(),
           app_metadata: { provider: 'email', providers: ['email'] },
-          user_metadata: { role: 'admin', full_name: 'GABRIEL NOLE' },
+          user_metadata: { role: 'admin', full_name: adminName },
           identities: [],
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
@@ -46,13 +69,13 @@ test.describe('Flujo completo de GYMFLOW', () => {
             id: 'c35c59b4-4966-4594-a573-e486a6cfa1a2',
             aud: 'authenticated',
             role: 'authenticated',
-            email: 'n4sh3333@gmail.com',
+            email: testEmail,
             email_confirmed_at: new Date().toISOString(),
             phone: '',
             confirmed_at: new Date().toISOString(),
             last_sign_in_at: new Date().toISOString(),
             app_metadata: { provider: 'email', providers: ['email'] },
-            user_metadata: { role: 'admin', full_name: 'GABRIEL NOLE' },
+            user_metadata: { role: 'admin', full_name: adminName },
             identities: [],
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
@@ -77,6 +100,19 @@ test.describe('Flujo completo de GYMFLOW', () => {
 
     // Clic en registrar
     await page.getByRole('button', { name: 'Registrar Gimnasio' }).click();
+
+    // Verificar que se muestre la pantalla de verificación de correo
+    await expect(page.getByRole('heading', { name: '¡Verifica tu correo!' })).toBeVisible();
+    await expect(page.getByText(`Hemos enviado un correo de confirmación a ${testEmail}`)).toBeVisible();
+
+    // Ir al inicio de sesión
+    await page.getByRole('button', { name: 'Ir al Inicio de Sesión' }).click();
+    await page.waitForURL('**/login');
+
+    // Rellenar el formulario de inicio de sesión
+    await page.getByPlaceholder('ejemplo@gimnasio.com').fill(testEmail);
+    await page.locator('input[type="password"]').fill('password123');
+    await page.getByRole('button', { name: 'Ingresar' }).click();
 
     // Esperar redirección al Dashboard (ruta '/')
     await page.waitForURL('**/');
