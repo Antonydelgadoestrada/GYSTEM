@@ -89,7 +89,7 @@ export const DashboardPage: React.FC = () => {
       // D) Obtener membresías próximas a vencer (próximos 7 días)
       const { data: upcomingCM } = await supabase
         .from('customer_memberships')
-        .select('id, end_date, status, customers(full_name, phone), memberships(name)')
+        .select('id, end_date, status, customers(full_name, phone), memberships(name, duration_days)')
         .eq('status', 'active')
         .lte('end_date', nextWeekDate)
         .gte('end_date', todayStr)
@@ -168,14 +168,16 @@ export const DashboardPage: React.FC = () => {
 
       const chartData = Object.values(chartMap)
 
-      // MAPEADO DE ALERTAS DE VENCIMIENTO
-      const renewals = (upcomingCM || []).map((cm: any) => ({
-        id: cm.id,
-        fullName: cm.customers?.full_name || 'Desconocido',
-        phone: cm.customers?.phone || null,
-        membershipName: cm.memberships?.name || 'Plan',
-        endDate: cm.end_date
-      }))
+      // MAPEADO DE ALERTAS DE VENCIMIENTO (Excluyendo pases diarios/de 1 día)
+      const renewals = (upcomingCM || [])
+        .filter((cm: any) => cm.memberships && cm.memberships.duration_days > 1)
+        .map((cm: any) => ({
+          id: cm.id,
+          fullName: cm.customers?.full_name || 'Desconocido',
+          phone: cm.customers?.phone || null,
+          membershipName: cm.memberships?.name || 'Plan',
+          endDate: cm.end_date
+        }))
 
       // MAPEADO DE PAGOS RECIENTES
       const recentPayments = (recentP || []).map((rp: any) => ({
