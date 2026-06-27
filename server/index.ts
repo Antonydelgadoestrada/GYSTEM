@@ -22,10 +22,15 @@ app.get('/api/health', (req, res) => {
 // Endpoint solicitado
 app.get('/api/reniec/:dni', ReniecController.getDni)
 
-// Iniciar servidor
-app.listen(PORT, () => {
-  console.log(`====================================================`)
-  console.log(`🚀 SERVIDOR DE CONSULTA RENIEC CORRIENDO EN PORT ${PORT}`)
-  console.log(`👉 Endpoint: http://localhost:${PORT}/api/reniec/:dni`)
-  console.log(`====================================================`)
-})
+// Exportar app para despliegues serverless (ej. Vercel)
+export default app
+
+// Iniciar servidor solo si no estamos en Vercel
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`====================================================`)
+    console.log(`🚀 SERVIDOR DE CONSULTA RENIEC CORRIENDO EN PORT ${PORT}`)
+    console.log(`👉 Endpoint: http://localhost:${PORT}/api/reniec/:dni`)
+    console.log(`====================================================`)
+  })
+}
