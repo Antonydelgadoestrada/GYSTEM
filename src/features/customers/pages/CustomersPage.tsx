@@ -236,7 +236,9 @@ export const CustomersPage: React.FC = () => {
                           {customer.full_name}
                         </h3>
                         {hasActiveMembership && (
-                          <Crown className="h-3.5 w-3.5 text-amber-400 shrink-0 fill-amber-400/20" title="Membresía Activa" />
+                          <span title="Membresía Activa" className="shrink-0">
+                            <Crown className="h-3.5 w-3.5 text-amber-400 fill-amber-400/20" />
+                          </span>
                         )}
                       </div>
                       <span
