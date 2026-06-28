@@ -170,10 +170,6 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
               setValue('full_name', data.nombreCompleto)
               setIsMinor(false)
             }}
-            onMinorDetected={() => {
-              setIsMinor(true)
-              setValue('full_name', '')
-            }}
             onChange={(val) => {
               setValue('dni', val)
             }}

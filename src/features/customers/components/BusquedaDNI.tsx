@@ -11,7 +11,6 @@ export interface ReniecResult {
 
 interface BusquedaDNIProps {
   onSuccess: (data: ReniecResult) => void
-  onMinorDetected?: () => void
   onSearchingChange?: (searching: boolean) => void
   onChange?: (dni: string) => void
   initialDni?: string
@@ -23,7 +22,6 @@ const localDniCache = new Map<string, ReniecResult>()
 
 export const BusquedaDNI: React.FC<BusquedaDNIProps> = ({
   onSuccess,
-  onMinorDetected,
   onSearchingChange,
   onChange,
   initialDni = '',

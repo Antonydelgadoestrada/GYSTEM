@@ -287,11 +287,6 @@ export const AssignMembershipModal: React.FC<AssignMembershipModalProps> = ({
                       setIsMinor(false)
                       setShowNameInput(true)
                     }}
-                    onMinorDetected={() => {
-                      setIsMinor(true)
-                      setQuickName('')
-                      setShowNameInput(true)
-                    }}
                     onChange={(val) => {
                       setQuickDni(val)
                     }}

@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
 import { useNavigate, Link } from 'react-router-dom'
 import { supabase } from '@/config/supabase'
-import { UserPlus, Mail, Lock, Building, User, AlertTriangle, CheckCircle } from 'lucide-react'
+import { UserPlus, Mail, Lock, Building, User, AlertTriangle } from 'lucide-react'
 
 const registerSchema = z.object({
   gymName: z.string().min(3, 'El nombre del gimnasio debe tener al menos 3 caracteres'),
