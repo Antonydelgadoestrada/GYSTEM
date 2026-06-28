@@ -22,7 +22,7 @@ const customerSchema = z.object({
 type CustomerFormValues = z.infer<typeof customerSchema>
 
 interface CustomerFormProps {
-  initialData?: Customer
+  initialData?: Partial<Customer>
   onSubmit: (data: CreateCustomerInput) => void
   onCancel: () => void
   isSubmitting: boolean
@@ -38,8 +38,56 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
   const [photoPreview, setPhotoPreview] = useState<string | null>(initialData?.photo_url || null)
   const [uploadError, setUploadError] = useState<string | null>(null)
 
-  // Estados de consulta DNI
+  // Estados de consulta DNI y validación
   const [isMinor, setIsMinor] = useState(initialData?.notes?.includes('Menor de edad') || false)
+  const [duplicateError, setDuplicateError] = useState<string | null>(null)
+
+  const checkDuplicates = async (
+    dni: string,
+    fullName: string,
+    currentId?: string
+  ): Promise<{ dniExists: boolean; nameExists: boolean; existingName?: string } | null> => {
+    try {
+      const trimmedDni = dni.trim()
+      if (trimmedDni.length > 0) {
+        let query = supabase
+          .from('customers')
+          .select('id, full_name')
+          .eq('dni', trimmedDni)
+
+        if (currentId) {
+          query = query.neq('id', currentId)
+        }
+
+        const { data: dniData } = await query.maybeSingle()
+        if (dniData) {
+          return { dniExists: true, nameExists: false, existingName: dniData.full_name }
+        }
+      }
+
+      const trimmedName = fullName.trim()
+      if (trimmedName.length > 0) {
+        let query = supabase
+          .from('customers')
+          .select('id, full_name')
+          .ilike('full_name', trimmedName)
+
+        if (currentId) {
+          query = query.neq('id', currentId)
+        }
+
+        const { data: nameData } = await query.limit(1)
+        if (nameData && nameData.length > 0) {
+          return { dniExists: false, nameExists: true, existingName: nameData[0].full_name }
+        }
+      }
+
+      return null
+    } catch (e) {
+      console.error('Error al validar duplicados:', e)
+      return null
+    }
+  }
 
   const {
     register,
@@ -52,12 +100,12 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
     defaultValues: initialData
       ? {
           dni: initialData.dni || '',
-          full_name: initialData.full_name,
+          full_name: initialData.full_name || '',
           email: initialData.email || '',
           phone: initialData.phone || '',
           birth_date: initialData.birth_date || '',
-          access_code: initialData.access_code || '',
-          status: initialData.status,
+          access_code: initialData.access_code || Math.floor(100000 + Math.random() * 900000).toString(),
+          status: initialData.status || 'active',
           notes: initialData.notes || '',
           photo_url: initialData.photo_url || '',
         }
@@ -114,7 +162,20 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
     }
   }
 
-  const handleFormSubmit = (data: CustomerFormValues) => {
+  const handleFormSubmit = async (data: CustomerFormValues) => {
+    setDuplicateError(null)
+
+    // Validar duplicados antes de guardar en Supabase
+    const duplicate = await checkDuplicates(data.dni || '', data.full_name, initialData?.id)
+    if (duplicate) {
+      if (duplicate.dniExists) {
+        setDuplicateError(`El DNI ${data.dni} ya existe y pertenece al cliente: ${duplicate.existingName}`)
+      } else if (duplicate.nameExists) {
+        setDuplicateError(`El cliente con nombre "${data.full_name}" ya existe en el sistema (registrado como: ${duplicate.existingName}).`)
+      }
+      return
+    }
+
     // Sanitizar campos vacíos para no guardar cadenas vacías en lugar de nulos
     const sanitizedData: CreateCustomerInput = {
       dni: data.dni || null,
@@ -134,6 +195,13 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
 
   return (
     <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4 max-h-[80vh] overflow-y-auto pr-2">
+      {duplicateError && (
+        <div className="p-3.5 bg-destructive/10 border border-destructive/20 text-destructive rounded-xl text-xs flex items-start space-x-2 animate-in fade-in duration-200">
+          <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+          <span className="font-semibold">{duplicateError}</span>
+        </div>
+      )}
+
       {/* Subida de Fotografía */}
       <div className="flex flex-col items-center space-y-2 pb-4 border-b border-border/40">
         <div className="relative h-24 w-24 rounded-full border-2 border-dashed border-border flex items-center justify-center bg-secondary/20 overflow-hidden group">

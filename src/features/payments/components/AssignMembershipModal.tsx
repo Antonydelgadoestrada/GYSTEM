@@ -8,6 +8,7 @@ import { useCreateSubscriptionAndPayment, type CreateSubscriptionAndPaymentInput
 import { useGymSettings } from '@/features/settings/hooks/useGymSettings'
 import { formatMoney } from '@/utils/currency'
 import { BusquedaDNI } from '@/features/customers/components/BusquedaDNI'
+import { supabase } from '@/config/supabase'
 import { Award, User, DollarSign, Calendar, CreditCard, X, Save, AlertTriangle, Search, Plus, RefreshCw } from 'lucide-react'
 
 const assignSchema = z.object({
@@ -130,6 +131,36 @@ export const AssignMembershipModal: React.FC<AssignMembershipModalProps> = ({
     }
     try {
       setQuickError(null)
+      
+      const dniVal = quickDni.trim()
+      const nameVal = quickName.trim()
+
+      if (dniVal) {
+        const { data: dniData } = await supabase
+          .from('customers')
+          .select('id, full_name')
+          .eq('dni', dniVal)
+          .maybeSingle()
+
+        if (dniData) {
+          setQuickError(`El DNI ${dniVal} ya existe y pertenece al cliente: ${dniData.full_name}`)
+          return
+        }
+      }
+
+      if (nameVal) {
+        const { data: nameData } = await supabase
+          .from('customers')
+          .select('id, full_name')
+          .ilike('full_name', nameVal)
+          .limit(1)
+
+        if (nameData && nameData.length > 0) {
+          setQuickError(`El cliente con nombre "${nameVal}" ya existe en el sistema (registrado como: ${nameData[0].full_name}).`)
+          return
+        }
+      }
+
       const newCust = await createCustomerMutation.mutateAsync({
         dni: quickDni.trim() || null,
         full_name: quickName.trim(),
@@ -402,6 +433,14 @@ export const AssignMembershipModal: React.FC<AssignMembershipModalProps> = ({
                     onClick={() => {
                       setIsCreatingCustomer(true)
                       setQuickAccessCode(Math.floor(100000 + Math.random() * 900000).toString())
+                      
+                      const q = searchQuery.trim()
+                      if (/^\d+$/.test(q)) {
+                        setQuickDni(q)
+                      } else if (q.length > 0) {
+                        setQuickName(q)
+                        setShowNameInput(true)
+                      }
                     }}
                     className="px-3 py-2 bg-primary/10 border border-primary/20 text-primary hover:bg-primary/25 rounded-xl text-sm font-semibold flex items-center space-x-1 transition-all cursor-pointer"
                   >
@@ -436,8 +475,29 @@ export const AssignMembershipModal: React.FC<AssignMembershipModalProps> = ({
                           </button>
                         ))
                       ) : (
-                        <div className="px-4 py-3 text-sm text-muted-foreground text-center">
-                          No se encontraron atletas.
+                        <div className="px-4 py-3 text-sm text-muted-foreground text-center space-y-2">
+                          <p>No se encontraron atletas.</p>
+                          {searchQuery.trim().length > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsCreatingCustomer(true)
+                                setQuickAccessCode(Math.floor(100000 + Math.random() * 900000).toString())
+                                setShowDropdown(false)
+                                
+                                const q = searchQuery.trim()
+                                if (/^\d+$/.test(q)) {
+                                  setQuickDni(q)
+                                } else {
+                                  setQuickName(q)
+                                  setShowNameInput(true)
+                                }
+                              }}
+                              className="w-full bg-primary/10 border border-primary/20 hover:bg-primary/20 text-primary text-xs py-1.5 px-3 rounded-lg font-bold transition-all active:scale-[0.98] cursor-pointer"
+                            >
+                              Registrar a "{searchQuery.trim()}"
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>

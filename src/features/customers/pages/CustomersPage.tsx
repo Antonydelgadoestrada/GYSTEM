@@ -34,6 +34,7 @@ export const CustomersPage: React.FC = () => {
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null)
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false)
   const [selectedCustomerIdForAssign, setSelectedCustomerIdForAssign] = useState<string | undefined>(undefined)
+  const [prepopulatedCustomerData, setPrepopulatedCustomerData] = useState<any>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const navigate = useNavigate()
 
@@ -48,6 +49,7 @@ export const CustomersPage: React.FC = () => {
       setErrorMessage(null)
       await createMutation.mutateAsync(data)
       setIsCreateModalOpen(false)
+      setPrepopulatedCustomerData(null)
     } catch (err: any) {
       setErrorMessage(err.message || 'Error al registrar el cliente.')
     }
@@ -199,12 +201,31 @@ export const CustomersPage: React.FC = () => {
           <p className="text-sm text-muted-foreground mt-1">{(error as any)?.message}</p>
         </div>
       ) : customerList.length === 0 ? (
-        <div className="text-center py-20 p-6 bg-card border border-border/60 rounded-2xl">
-          <Users className="h-12 w-12 text-muted-foreground mx-auto mb-3 opacity-60" />
-          <h3 className="text-lg font-semibold">No se encontraron clientes</h3>
-          <p className="text-sm text-muted-foreground mt-1">
-            Prueba a buscar con otra palabra clave o agrega un nuevo cliente.
+        <div className="text-center py-20 p-6 bg-card border border-border/60 rounded-2xl flex flex-col items-center justify-center">
+          <Users className="h-12 w-12 text-muted-foreground mb-3 opacity-60" />
+          <h3 className="text-lg font-semibold font-bold">No se encontraron clientes</h3>
+          <p className="text-sm text-muted-foreground mt-1 max-w-xs">
+            Prueba a buscar con otra palabra clave o registra de inmediato un cliente con estos datos.
           </p>
+          {search.trim().length > 0 && (
+            <button
+              onClick={() => {
+                const q = search.trim()
+                const initialData: any = {}
+                if (/^\d+$/.test(q)) {
+                  initialData.dni = q
+                } else {
+                  initialData.full_name = q
+                }
+                setPrepopulatedCustomerData(initialData)
+                setIsCreateModalOpen(true)
+              }}
+              className="mt-4 bg-primary hover:bg-primary/95 text-primary-foreground text-xs py-2.5 px-4 rounded-xl font-bold inline-flex items-center justify-center space-x-1.5 transition-all shadow-lg shadow-primary/20 active:scale-[0.98] cursor-pointer"
+            >
+              <UserPlus className="h-4 w-4" />
+              <span>Registrar a "{search.trim()}"</span>
+            </button>
+          )}
         </div>
       ) : (
         <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
@@ -349,8 +370,12 @@ export const CustomersPage: React.FC = () => {
           <div className="bg-card border border-border/60 rounded-2xl w-full max-w-xl p-6 shadow-2xl z-10 animate-in zoom-in-95 duration-150">
             <h2 className="text-xl font-bold tracking-tight mb-4">Registrar Nuevo Cliente</h2>
             <CustomerForm
+              initialData={prepopulatedCustomerData}
               onSubmit={handleCreate}
-              onCancel={() => setIsCreateModalOpen(false)}
+              onCancel={() => {
+                setIsCreateModalOpen(false)
+                setPrepopulatedCustomerData(null)
+              }}
               isSubmitting={createMutation.isPending}
             />
           </div>
