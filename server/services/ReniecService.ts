@@ -20,7 +20,8 @@ export class ReniecService {
    * @param dni Número de DNI (8 dígitos)
    */
   public static async buscarPorDNI(dni: string): Promise<ReniecData> {
-    const token = process.env.VERIFICAPE_API_TOKEN
+    const rawToken = process.env.VERIFICAPE_API_TOKEN || 'vp_live_db356e6abde04574b0387d48bdef03a5'
+    const token = rawToken ? rawToken.replace(/^["']|["']$/g, '').trim() : null
     
     if (!token) {
       console.error('[ReniecService] Error: VERIFICAPE_API_TOKEN no está configurado en las variables de entorno.')
