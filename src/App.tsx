@@ -20,6 +20,8 @@ const queryClient = new QueryClient({
     queries: {
       refetchOnWindowFocus: false,
       retry: 1,
+      staleTime: 1000 * 60 * 2, // Mantener los datos "frescos" por 2 minutos para evitar recargas constantes al cambiar de pantalla
+      gcTime: 1000 * 60 * 10,   // Mantener en el recolector de basura por 10 minutos
     },
   },
 })
