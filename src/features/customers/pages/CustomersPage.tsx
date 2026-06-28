@@ -20,14 +20,20 @@ import {
   ExternalLink,
   AlertTriangle,
   Users,
-  Crown
+  Crown,
+  RefreshCw,
+  Plus
 } from 'lucide-react'
+import { AssignMembershipModal } from '@/features/payments/components/AssignMembershipModal'
+
 
 export const CustomersPage: React.FC = () => {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all')
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null)
+  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false)
+  const [selectedCustomerIdForAssign, setSelectedCustomerIdForAssign] = useState<string | undefined>(undefined)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const navigate = useNavigate()
 
@@ -278,12 +284,36 @@ export const CustomersPage: React.FC = () => {
 
               {/* Botones de acción */}
               <div className="mt-5 pt-4 border-t border-border/40 flex items-center justify-between gap-2">
+                {hasActiveMembership ? (
+                  <button
+                    onClick={() => {
+                      setSelectedCustomerIdForAssign(customer.id)
+                      setIsAssignModalOpen(true)
+                    }}
+                    className="flex-1 flex items-center justify-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-primary hover:bg-primary/95 text-primary-foreground transition-all active:scale-[0.98] shadow-md shadow-primary/15 cursor-pointer"
+                  >
+                    <RefreshCw className="h-3.5 w-3.5 animate-hover-spin" />
+                    <span>Renovar</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => {
+                      setSelectedCustomerIdForAssign(customer.id)
+                      setIsAssignModalOpen(true)
+                    }}
+                    className="flex-1 flex items-center justify-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-semibold border border-dashed border-primary/45 hover:border-primary bg-primary/5 hover:bg-primary/10 text-primary hover:text-primary transition-all cursor-pointer"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    <span>Asignar</span>
+                  </button>
+                )}
+
                 <button
                   onClick={() => navigate(`/clientes/${customer.id}`)}
-                  className="flex-1 flex items-center justify-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-semibold border border-border bg-secondary/10 hover:bg-secondary/30 text-muted-foreground hover:text-foreground transition-all"
+                  className="flex items-center justify-center p-2 rounded-xl border border-border bg-secondary/10 hover:bg-secondary/30 text-muted-foreground hover:text-foreground transition-all"
+                  title="Ver ficha detallada"
                 >
                   <ExternalLink className="h-3.5 w-3.5" />
-                  <span>Ver Ficha</span>
                 </button>
 
                 <button
@@ -341,6 +371,16 @@ export const CustomersPage: React.FC = () => {
             />
           </div>
         </div>
+      )}
+      {/* Modal de Asignación / Renovación de Membresía */}
+      {isAssignModalOpen && (
+        <AssignMembershipModal
+          preselectedCustomerId={selectedCustomerIdForAssign}
+          onClose={() => {
+            setIsAssignModalOpen(false)
+            setSelectedCustomerIdForAssign(undefined)
+          }}
+        />
       )}
     </div>
   )
