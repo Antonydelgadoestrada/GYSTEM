@@ -62,7 +62,17 @@ export const BusquedaDNI: React.FC<BusquedaDNIProps> = ({
       console.log(`[BusquedaDNI] Cancelando consulta previa para DNI.`)
     }
 
-    if (!validateDniFormat(dniParaBuscar)) {
+    // Si tiene 7 dígitos, rellenar con un cero a la izquierda automáticamente
+    let dniNormalizado = dniParaBuscar
+    if (dniParaBuscar.length === 7 && /^\d{7}$/.test(dniParaBuscar)) {
+      dniNormalizado = '0' + dniParaBuscar
+      setDni(dniNormalizado)
+      if (onChange) {
+        onChange(dniNormalizado)
+      }
+    }
+
+    if (!validateDniFormat(dniNormalizado)) {
       if (force) {
         setIsError(true)
         setStatusMsg('El DNI debe tener exactamente 8 dígitos numéricos.')
@@ -71,9 +81,9 @@ export const BusquedaDNI: React.FC<BusquedaDNIProps> = ({
     }
 
     // 2. Verificar caché en memoria del cliente para evitar consultas duplicadas
-    if (localDniCache.has(dniParaBuscar)) {
-      const cachedData = localDniCache.get(dniParaBuscar)!
-      console.log(`[BusquedaDNI] DNI ${dniParaBuscar} encontrado en caché local del cliente.`)
+    if (localDniCache.has(dniNormalizado)) {
+      const cachedData = localDniCache.get(dniNormalizado)!
+      console.log(`[BusquedaDNI] DNI ${dniNormalizado} encontrado en caché local del cliente.`)
       setIsError(false)
       setStatusMsg('Datos encontrados correctamente (Caché).')
       onSuccess(cachedData)
@@ -93,7 +103,7 @@ export const BusquedaDNI: React.FC<BusquedaDNIProps> = ({
     try {
       // Para mayor robustez en producción, usamos la URL relativa /api/reniec/:dni
       // y dejamos que el proxy de Vite o Nginx lo redirija al backend express en puerto 3001
-      const response = await fetch(`/api/reniec/${dniParaBuscar}`, {
+      const response = await fetch(`/api/reniec/${dniNormalizado}`, {
         method: 'GET',
         headers: {
           'Accept': 'application/json',
@@ -107,22 +117,14 @@ export const BusquedaDNI: React.FC<BusquedaDNIProps> = ({
         const data: ReniecResult = result.data
         
         // Almacenar en caché local
-        localDniCache.set(dniParaBuscar, data)
+        localDniCache.set(dniNormalizado, data)
         
         setIsError(false)
         setStatusMsg('Datos encontrados correctamente.')
         onSuccess(data)
       } else {
         setIsError(true)
-        // Detectar si el DNI es de menor de edad (usualmente controlado por lógica de negocio o backend)
-        const isMinor = dniParaBuscar.startsWith('6') || dniParaBuscar.startsWith('7')
-        
-        if (isMinor) {
-          setStatusMsg('El DNI corresponde a un menor de edad. Ingreso manual habilitado.')
-          if (onMinorDetected) onMinorDetected()
-        } else {
-          setStatusMsg(result.message || 'No se pudo consultar el DNI.')
-        }
+        setStatusMsg(result.message || 'No se pudo consultar el DNI.')
       }
     } catch (err: any) {
       if (err.name === 'AbortError') {
