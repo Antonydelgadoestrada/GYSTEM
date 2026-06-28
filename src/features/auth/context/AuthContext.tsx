@@ -22,6 +22,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [permissions, setPermissions] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
+  // Usar refs para evitar clausuras obsoletas en onAuthStateChange
+  const userRef = React.useRef<User | null>(null)
+  const roleRef = React.useRef<UserRole | null>(null)
+
+  // Mantener los refs sincronizados
+  React.useEffect(() => {
+    userRef.current = user
+  }, [user])
+
+  React.useEffect(() => {
+    roleRef.current = role
+  }, [role])
+
   const resolveAndSetRole = async (currentUser: User) => {
     // 1. Consultar public.users como la fuente de verdad (evita datos desincronizados del JWT)
     try {
@@ -107,11 +120,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      const currentUser = session?.user ?? null
+      
+      // Si el usuario es el mismo y ya tenemos su rol cargado, no hacemos nada (evita loaders fantasmas en navegación)
+      if (currentUser?.id === userRef.current?.id && roleRef.current !== null) {
+        setSession(session)
+        setUser(currentUser)
+        return
+      }
+
+      console.log('AuthContext: onAuthStateChange disparado con evento:', event)
       setIsLoading(true)
       try {
         setSession(session)
-        const currentUser = session?.user ?? null
         setUser(currentUser)
 
         if (currentUser) {
