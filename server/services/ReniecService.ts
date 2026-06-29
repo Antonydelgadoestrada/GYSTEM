@@ -20,11 +20,27 @@ export class ReniecService {
    * @param dni Número de DNI (8 dígitos)
    */
   public static async buscarPorDNI(dni: string): Promise<ReniecData> {
-    const rawToken = process.env.VERIFICAPE_API_TOKEN || 'vp_live_db356e6abde04574b0387d48bdef03a5'
-    const token = rawToken ? rawToken.replace(/^["']|["']$/g, '').trim() : null
-    
+    const fallbackToken = 'vp_live_db356e6abde04574b0387d48bdef03a5'
+    const rawToken = process.env.VERIFICAPE_API_TOKEN
+    const configuredToken = rawToken ? rawToken.replace(/^["']|["']$/g, '').trim() : null
+
+    // Decidir cuál usar en el primer intento
+    const tokenToUse = configuredToken || fallbackToken
+
+    try {
+      return await this.ejecutarConsulta(dni, tokenToUse)
+    } catch (error: any) {
+      // Si falló por falta de autorización y usamos el token configurado, reintentar con el fallback
+      if (error.message === 'VERIFICAPE_UNAUTHORIZED' && tokenToUse !== fallbackToken) {
+        console.warn(`[ReniecService] El token configurado falló. Reintentando con token fallback...`)
+        return await this.ejecutarConsulta(dni, fallbackToken)
+      }
+      throw error
+    }
+  }
+
+  private static async ejecutarConsulta(dni: string, token: string): Promise<ReniecData> {
     if (!token) {
-      console.error('[ReniecService] Error: VERIFICAPE_API_TOKEN no está configurado en las variables de entorno.')
       throw new Error('VERIFICAPE_UNAUTHORIZED')
     }
 
@@ -34,7 +50,7 @@ export class ReniecService {
 
     try {
       console.log(`[ReniecService] Consultando DNI ${dni} en VerificaPE...`)
-      
+
       const response = await fetch(`${this.API_URL}/${dni}`, {
         method: 'GET',
         headers: {
@@ -61,7 +77,7 @@ export class ReniecService {
       }
 
       const data = await response.json()
-      
+
       // Validar si la respuesta contiene los campos esperados (API v2 devuelve success: true y los datos en el objeto data)
       if (!data || !data.success || !data.data) {
         throw new Error('DNI_NOT_FOUND')
@@ -85,7 +101,7 @@ export class ReniecService {
 
     } catch (error: any) {
       clearTimeout(timeoutId)
-      
+
       if (error.name === 'AbortError') {
         console.error(`[ReniecService] Timeout al consultar VerificaPE para el DNI ${dni}`)
         throw new Error('VERIFICAPE_TIMEOUT')
