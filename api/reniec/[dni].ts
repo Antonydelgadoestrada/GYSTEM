@@ -1,4 +1,4 @@
-import { ReniecService } from '../server/services/ReniecService'
+import { ReniecService } from '../../server/services/ReniecService'
 
 export default async function handler(req: any, res: any) {
   // CORS Headers
