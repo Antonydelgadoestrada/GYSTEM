@@ -109,29 +109,42 @@ export const BusquedaDNI: React.FC<BusquedaDNIProps> = ({
         signal: controller.signal,
       })
 
-      const result = await response.json()
-
-      if (response.ok && result.success) {
-        const data: ReniecResult = result.data
-        
-        // Almacenar en caché local
-        localDniCache.set(dniNormalizado, data)
-        
-        setIsError(false)
-        setStatusMsg('Datos encontrados correctamente.')
-        onSuccess(data)
+      if (response.ok) {
+        const result = await response.json()
+        if (result.success) {
+          const data: ReniecResult = result.data
+          localDniCache.set(dniNormalizado, data)
+          setIsError(false)
+          setStatusMsg('Datos encontrados correctamente.')
+          onSuccess(data)
+        } else {
+          setIsError(true)
+          setStatusMsg(result.message || 'No se pudo consultar el DNI.')
+        }
       } else {
+        let errMsg = ''
+        try {
+          const text = await response.text()
+          if (text.startsWith('{')) {
+            const parsed = JSON.parse(text)
+            errMsg = parsed.error || parsed.message || text
+          } else {
+            // Si es un HTML de error de Vercel, mostrar un fragmento descriptivo
+            errMsg = text.substring(0, 150).replace(/<[^>]*>/g, ' ').trim()
+          }
+        } catch (e) {
+          errMsg = response.statusText
+        }
         setIsError(true)
-        setStatusMsg(result.message || 'No se pudo consultar el DNI.')
+        setStatusMsg(`Error servidor (${response.status}): ${errMsg}`)
       }
     } catch (err: any) {
       if (err.name === 'AbortError') {
-        // La petición fue cancelada intencionalmente, no mostrar error
         return
       }
       console.error('[BusquedaDNI] Error en fetch:', err)
       setIsError(true)
-      setStatusMsg('No se pudo consultar el DNI.')
+      setStatusMsg(`Error de conexión: ${err.message || String(err)}`)
     } finally {
       // Limpiar referencia si es la misma petición
       if (abortControllerRef.current === controller) {
