@@ -1,3 +1,5 @@
-import app from '../server/index'
-
-export default app
+export default function handler(req: any, res: any) {
+  res.statusCode = 200
+  res.setHeader('Content-Type', 'text/plain')
+  res.end('GYSTEM API serverless router is active.')
+}
