@@ -15,7 +15,7 @@ export class ReniecController {
    * Endpoint GET /api/reniec/:dni
    */
   public static async getDni(req: Request, res: Response): Promise<void> {
-    const { dni } = req.params
+    const dni = String(req.params.dni || '').trim()
 
     // 1. VALIDACIONES
     // • Debe tener exactamente 8 dígitos.
@@ -94,7 +94,9 @@ export class ReniecController {
       console.error(`[ReniecController] Error interno procesando DNI ${dni}:`, error)
       res.status(500).json({
         success: false,
-        message: 'No fue posible consultar RENIEC.'
+        message: 'No fue posible consultar RENIEC.',
+        error: error.message || String(error),
+        stack: error.stack
       })
     }
   }
