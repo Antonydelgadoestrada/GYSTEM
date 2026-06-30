@@ -127,7 +127,11 @@ export const BusquedaDNI: React.FC<BusquedaDNIProps> = ({
           const text = await response.text()
           if (text.startsWith('{')) {
             const parsed = JSON.parse(text)
-            errMsg = parsed.error || parsed.message || text
+            if (parsed.error && typeof parsed.error === 'object') {
+              errMsg = parsed.error.message || parsed.error.code || JSON.stringify(parsed.error)
+            } else {
+              errMsg = parsed.error || parsed.message || text
+            }
           } else {
             // Si es un HTML de error de Vercel, mostrar un fragmento descriptivo
             errMsg = text.substring(0, 150).replace(/<[^>]*>/g, ' ').trim()
