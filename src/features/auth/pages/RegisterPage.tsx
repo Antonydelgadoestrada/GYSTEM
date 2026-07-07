@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
@@ -20,6 +20,8 @@ export const RegisterPage: React.FC = () => {
   const [success, setSuccess] = useState(false)
   const [registeredEmail, setRegisteredEmail] = useState('')
   const [loading, setLoading] = useState(false)
+  const [isRegistrationBlocked, setIsRegistrationBlocked] = useState(false)
+  const [checkingBlock, setCheckingBlock] = useState(true)
   const navigate = useNavigate()
 
   const {
@@ -30,11 +32,43 @@ export const RegisterPage: React.FC = () => {
     resolver: zodResolver(registerSchema),
   })
 
+  // Comprobar si ya existe algún usuario administrador en la base de datos
+  useEffect(() => {
+    const checkExistingAdmin = async () => {
+      try {
+        const { count, error: countError } = await supabase
+          .from('users')
+          .select('id', { count: 'exact', head: true })
+
+        if (countError) throw countError
+        if (count && count >= 2) {
+          setIsRegistrationBlocked(true)
+        }
+      } catch (err) {
+        console.error('Error al verificar administradores registrados:', err)
+      } finally {
+        setCheckingBlock(false)
+      }
+    }
+    checkExistingAdmin()
+  }, [])
+
   const onSubmit = async (data: RegisterFormInputs) => {
     setError(null)
     setLoading(true)
 
     try {
+      // Doble validación en base de datos al enviar el formulario
+      const { count, error: countError } = await supabase
+        .from('users')
+        .select('id', { count: 'exact', head: true })
+
+      if (countError) throw countError
+      if (count && count >= 2) {
+        setIsRegistrationBlocked(true)
+        throw new Error('El registro público ya está cerrado. El sistema cuenta con sus administradores.')
+      }
+
       // 1. Registrar al usuario administrador en Supabase Auth con los claims metadata
       const { error: signUpError } = await supabase.auth.signUp({
         email: data.email,
@@ -92,7 +126,28 @@ export const RegisterPage: React.FC = () => {
         </div>
 
         <div className="bg-card border border-border/60 rounded-2xl p-8 shadow-2xl backdrop-blur-md">
-          {success ? (
+          {checkingBlock ? (
+            <div className="flex flex-col items-center justify-center py-10 space-y-3">
+              <div className="h-8 w-8 animate-spin rounded-full border-3 border-primary border-t-transparent"></div>
+              <p className="text-xs text-muted-foreground animate-pulse">Comprobando estado del sistema...</p>
+            </div>
+          ) : isRegistrationBlocked ? (
+            <div className="text-center space-y-5 py-4">
+              <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-destructive/10 text-destructive border border-destructive/20 mb-2">
+                <Lock className="h-8 w-8" />
+              </div>
+              <h2 className="text-xl font-bold tracking-tight text-foreground text-center">Registro Deshabilitado</h2>
+              <p className="text-xs text-muted-foreground leading-relaxed text-center">
+                El sistema ya cuenta con un administrador registrado. Por razones de seguridad, el registro de nuevas cuentas está deshabilitado.
+              </p>
+              <button
+                onClick={() => navigate('/login')}
+                className="w-full mt-6 bg-primary hover:bg-primary/95 text-primary-foreground font-semibold py-2.5 rounded-xl text-sm flex items-center justify-center space-x-2 transition-all active:scale-[0.98] shadow-lg shadow-primary/20 cursor-pointer"
+              >
+                <span>Ir al Inicio de Sesión</span>
+              </button>
+            </div>
+          ) : success ? (
             <div className="text-center space-y-5 py-4">
               <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 mb-2 animate-bounce">
                 <Mail className="h-8 w-8" />
