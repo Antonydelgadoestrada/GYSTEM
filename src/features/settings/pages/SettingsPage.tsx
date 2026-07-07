@@ -24,6 +24,8 @@ export interface GymSettings {
   address: string | null
   currency: string
   payment_methods: string[]
+  quick_sale_customer_id: string | null
+  quick_sale_membership_id: string | null
 }
 
 // Schemas Zod
@@ -32,6 +34,8 @@ const settingsSchema = z.object({
   phone: z.string().optional().or(z.literal('')),
   address: z.string().optional().or(z.literal('')),
   currency: z.string().min(1, 'Debe seleccionar una moneda del sistema'),
+  quick_sale_customer_id: z.string().nullable().optional().or(z.literal('')),
+  quick_sale_membership_id: z.string().nullable().optional().or(z.literal('')),
 })
 
 type SettingsFormInputs = z.infer<typeof settingsSchema>
@@ -72,10 +76,88 @@ export const SettingsPage: React.FC = () => {
         phone: '',
         address: '',
         currency: 'PEN',
-        payment_methods: ['Efectivo', 'Tarjeta', 'Transferencia', 'Yape', 'Plin', 'Mixto']
+        payment_methods: ['Efectivo', 'Tarjeta', 'Transferencia', 'Yape', 'Plin', 'Mixto'],
+        quick_sale_customer_id: null,
+        quick_sale_membership_id: null
       } as GymSettings
     },
   })
+
+  // Query para cargar clientes activos en settings
+  const { data: customers } = useQuery({
+    queryKey: ['activeCustomersForSettings'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('customers')
+        .select('id, full_name, dni')
+        .eq('status', 'active')
+        .order('full_name', { ascending: true })
+      if (error) throw error
+      return data || []
+    }
+  })
+
+  // Query para cargar membresías activas en settings
+  const { data: memberships } = useQuery({
+    queryKey: ['activeMembershipsForSettings'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('memberships')
+        .select('id, name, price, duration_days')
+        .eq('is_active', true)
+        .order('name', { ascending: true })
+      if (error) throw error
+      return data || []
+    }
+  })
+
+  const [isCreatingGeneric, setIsCreatingGeneric] = useState(false)
+
+  const handleCreateGenericCustomer = async () => {
+    try {
+      setIsCreatingGeneric(true)
+      const { data: existing } = await supabase
+        .from('customers')
+        .select('id')
+        .ilike('full_name', 'Cliente Genérico')
+        .maybeSingle()
+
+      if (existing) {
+        setValue('quick_sale_customer_id', existing.id)
+        setSuccessMsg('Ya existe un cliente con el nombre "Cliente Genérico". Seleccionado automáticamente.')
+        setTimeout(() => setSuccessMsg(null), 3000)
+        return
+      }
+
+      const pin = Math.floor(100000 + Math.random() * 900000).toString()
+
+      const { data: newCustomer, error } = await supabase
+        .from('customers')
+        .insert({
+          full_name: 'Cliente Genérico',
+          dni: '99999999',
+          status: 'active',
+          access_code: pin,
+          notes: 'Creado automáticamente como cliente genérico para Venta Rápida.'
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+
+      queryClient.invalidateQueries({ queryKey: ['activeCustomersForSettings'] })
+      queryClient.invalidateQueries({ queryKey: ['customers'] })
+      
+      setValue('quick_sale_customer_id', newCustomer.id)
+      setSuccessMsg('¡Cliente Genérico creado y seleccionado con éxito!')
+      setTimeout(() => setSuccessMsg(null), 3000)
+    } catch (err: any) {
+      setErrorMsg('Error al crear el cliente genérico: ' + err.message)
+      setTimeout(() => setErrorMsg(null), 4000)
+    } finally {
+      setIsCreatingGeneric(false)
+    }
+  }
 
   // 2. Query para cargar Bitácora de Auditoría
   const { data: auditLogs, isLoading: isLogsLoading } = useQuery<AuditLog[]>({
@@ -116,6 +198,8 @@ export const SettingsPage: React.FC = () => {
       setValue('phone', gymSettings.phone || '')
       setValue('address', gymSettings.address || '')
       setValue('currency', gymSettings.currency || 'PEN')
+      setValue('quick_sale_customer_id', gymSettings.quick_sale_customer_id || '')
+      setValue('quick_sale_membership_id', gymSettings.quick_sale_membership_id || '')
       setPaymentMethods(gymSettings.payment_methods || ['Efectivo', 'Tarjeta', 'Transferencia', 'Yape', 'Plin', 'Mixto'])
     }
   }, [gymSettings, setValue])
@@ -125,7 +209,8 @@ export const SettingsPage: React.FC = () => {
     const trimmed = newMethod.trim()
     if (!trimmed) return
     if (paymentMethods.includes(trimmed)) {
-      alert('Este método de pago ya existe.')
+      setErrorMsg('Este método de pago ya existe.')
+      setTimeout(() => setErrorMsg(null), 4000)
       return
     }
     setPaymentMethods([...paymentMethods, trimmed])
@@ -134,7 +219,8 @@ export const SettingsPage: React.FC = () => {
 
   const handleRemoveMethod = (methodToRemove: string) => {
     if (paymentMethods.length <= 1) {
-      alert('Debe tener al menos un método de pago en el sistema.')
+      setErrorMsg('Debe tener al menos un método de pago en el sistema.')
+      setTimeout(() => setErrorMsg(null), 4000)
       return
     }
     setPaymentMethods(paymentMethods.filter((m) => m !== methodToRemove))
@@ -143,28 +229,26 @@ export const SettingsPage: React.FC = () => {
   // Mutación para actualizar settings
   const settingsMutation = useMutation({
     mutationFn: async (data: SettingsFormInputs & { payment_methods: string[] }) => {
+      const payload = {
+        name: data.name,
+        phone: data.phone || null,
+        address: data.address || null,
+        currency: data.currency,
+        payment_methods: data.payment_methods,
+        quick_sale_customer_id: data.quick_sale_customer_id || null,
+        quick_sale_membership_id: data.quick_sale_membership_id || null,
+      }
+
       if (gymSettings?.id) {
         const { error } = await supabase
           .from('gym_settings')
-          .update({
-            name: data.name,
-            phone: data.phone || null,
-            address: data.address || null,
-            currency: data.currency,
-            payment_methods: data.payment_methods,
-          })
+          .update(payload)
           .eq('id', gymSettings.id)
         if (error) throw error
       } else {
         const { error } = await supabase
           .from('gym_settings')
-          .insert({
-            name: data.name,
-            phone: data.phone || null,
-            address: data.address || null,
-            currency: data.currency,
-            payment_methods: data.payment_methods,
-          })
+          .insert(payload)
         if (error) throw error
       }
     },
@@ -341,6 +425,64 @@ export const SettingsPage: React.FC = () => {
                     </button>
                   </span>
                 ))}
+              </div>
+            </div>
+
+            {/* Configuración de Venta Rápida */}
+            <div className="space-y-4 border-t border-border/40 pt-4 mt-4">
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-primary flex items-center space-x-1.5">
+                  <span>⚡ Configuración de Venta Rápida</span>
+                </h3>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  Establece un cliente genérico y un plan por defecto para registrar transacciones de forma instantánea.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Selector de Cliente Genérico */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex justify-between items-center">
+                    <span>Cliente Genérico</span>
+                    <button
+                      type="button"
+                      disabled={isCreatingGeneric}
+                      onClick={handleCreateGenericCustomer}
+                      className="text-[10px] text-primary hover:underline font-bold transition-all disabled:opacity-50 shrink-0"
+                    >
+                      {isCreatingGeneric ? 'Creando...' : '+ Auto-crear genérico'}
+                    </button>
+                  </label>
+                  <select
+                    className="w-full bg-secondary/40 border border-border/80 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:border-primary transition-all text-foreground"
+                    {...register('quick_sale_customer_id')}
+                  >
+                    <option value="">-- Seleccionar Cliente Genérico --</option>
+                    {customers?.map((cust: any) => (
+                      <option key={cust.id} value={cust.id}>
+                        {cust.full_name} {cust.dni ? `(DNI: ${cust.dni})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Selector de Membresía Rápida */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Membresía por Defecto
+                  </label>
+                  <select
+                    className="w-full bg-secondary/40 border border-border/80 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:border-primary transition-all text-foreground"
+                    {...register('quick_sale_membership_id')}
+                  >
+                    <option value="">-- Seleccionar Membresía Rápida --</option>
+                    {memberships?.map((memb: any) => (
+                      <option key={memb.id} value={memb.id}>
+                        {memb.name} ({memb.price} - {memb.duration_days} {memb.duration_days === 1 ? 'día' : 'días'})
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
 

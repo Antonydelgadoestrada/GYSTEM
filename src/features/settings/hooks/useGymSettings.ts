@@ -9,6 +9,8 @@ export interface GymSettings {
   logo_url: string | null
   currency: string
   payment_methods: string[]
+  quick_sale_customer_id: string | null
+  quick_sale_membership_id: string | null
 }
 
 export type UpdateGymSettingsInput = Partial<Omit<GymSettings, 'id'>> & { id: string }
@@ -34,7 +36,9 @@ export const useGymSettings = () => {
           address: '',
           logo_url: '',
           currency: 'PEN',
-          payment_methods: ['Efectivo', 'Tarjeta', 'Transferencia', 'Yape', 'Plin', 'Mixto']
+          payment_methods: ['Efectivo', 'Tarjeta', 'Transferencia', 'Yape', 'Plin', 'Mixto'],
+          quick_sale_customer_id: null,
+          quick_sale_membership_id: null,
         }
       }
 

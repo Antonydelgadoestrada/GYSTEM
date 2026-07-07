@@ -194,7 +194,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
   }
 
   return (
-    <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4 max-h-[80vh] overflow-y-auto pr-2">
+    <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4 max-h-[65vh] overflow-y-auto pr-2">
       {duplicateError && (
         <div className="p-3.5 bg-destructive/10 border border-destructive/20 text-destructive rounded-xl text-xs flex items-start space-x-2 animate-in fade-in duration-200">
           <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />

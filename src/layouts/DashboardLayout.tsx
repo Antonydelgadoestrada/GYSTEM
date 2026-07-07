@@ -1,7 +1,10 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { Link, useNavigate, useLocation, Outlet } from 'react-router-dom'
 import { useAuth } from '@/features/auth/context/AuthContext'
 import { supabase } from '@/config/supabase'
+import { useUpcomingRenewals } from '@/features/dashboard/hooks/useUpcomingRenewals'
+import { QuickSaleModal } from '@/features/payments/components/QuickSaleModal'
+import { useGymSettings } from '@/features/settings/hooks/useGymSettings'
 import {
   LayoutDashboard,
   Users,
@@ -14,7 +17,11 @@ import {
   Menu,
   X,
   User as UserIcon,
-  Activity
+  Activity,
+  Bell,
+  Zap,
+  MessageSquare,
+  CalendarDays
 } from 'lucide-react'
 
 export const DashboardLayout: React.FC = () => {
@@ -23,6 +30,37 @@ export const DashboardLayout: React.FC = () => {
   const location = useLocation()
   const [gymName, setGymName] = useState<string>('Mi Gimnasio')
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+
+  // Estados y Hooks para Venta Rápida y Notificaciones
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
+  const [isQuickSaleOpen, setIsQuickSaleOpen] = useState(false)
+  const { data: settings } = useGymSettings()
+  const { data: renewals, refetch: refetchRenewals } = useUpcomingRenewals()
+  const notificationsRef = useRef<HTMLDivElement>(null)
+
+  // Cerrar notificaciones al hacer clic fuera del panel
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (notificationsRef.current && !notificationsRef.current.contains(event.target as Node)) {
+        setIsNotificationsOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  // Enviar mensaje de WhatsApp
+  const sendWhatsAppReminder = (fullName: string, phone: string | null, membershipName: string, endDateStr: string) => {
+    if (!phone) return
+    const cleanPhone = phone.replace(/[^\d+]/g, '')
+    const formattedDate = new Date(endDateStr).toLocaleDateString('es-ES', {
+      day: 'numeric',
+      month: 'long',
+    })
+    const message = `Hola ${fullName}, te saludamos de ${gymName} 🏋️. Te recordamos que tu pase (${membershipName}) vence pronto, el ${formattedDate}. ¡Te esperamos para seguir entrenando fuerte! 💪`
+    const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`
+    window.open(url, '_blank')
+  }
 
   // Cargar nombre del Gimnasio
   useEffect(() => {
@@ -220,7 +258,7 @@ export const DashboardLayout: React.FC = () => {
       {/* 3. MAIN WORKSPACE */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Header (Top bar) */}
-        <header className="h-16 border-b border-border bg-card/50 backdrop-blur-md px-6 flex items-center justify-between shrink-0 md:justify-end">
+        <header className="h-16 border-b border-border bg-card/50 backdrop-blur-md px-6 flex items-center justify-between shrink-0">
           {/* Mobile menu trigger */}
           <button
             onClick={() => setIsMobileMenuOpen(true)}
@@ -229,18 +267,125 @@ export const DashboardLayout: React.FC = () => {
             <Menu className="h-5 w-5" />
           </button>
 
-          {/* User Status Bar */}
-          <div className="flex items-center space-x-4">
-            <div className="hidden md:flex flex-col text-right">
-              <span className="text-sm font-semibold">
-                {user?.user_metadata?.full_name || user?.email}
-              </span>
-              <span className="text-[10px] text-muted-foreground capitalize">
-                Rol: {currentBadge.label}
-              </span>
+          <div className="md:flex-1 hidden md:block"></div>
+
+          {/* User Status Bar, Quick Sale & Notifications */}
+          <div className="flex items-center space-x-3">
+            {/* Botón de Venta Rápida */}
+            <button
+              onClick={() => {
+                if (!settings?.quick_sale_customer_id || !settings?.quick_sale_membership_id) {
+                  if (confirm('Falta configurar los parámetros de venta rápida. ¿Deseas ir a Configuración ahora?')) {
+                    navigate('/configuracion')
+                  }
+                  return
+                }
+                setIsQuickSaleOpen(true)
+              }}
+              className="flex items-center space-x-1.5 px-3 py-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 hover:border-amber-500/35 rounded-xl text-xs font-bold transition-all active:scale-[0.97]"
+              title="Registrar Venta Rápida"
+            >
+              <Zap className="h-3.5 w-3.5 fill-amber-400/10 text-amber-400" />
+              <span className="hidden sm:inline">Venta Rápida</span>
+            </button>
+
+            {/* Campana de Notificaciones */}
+            <div className="relative" ref={notificationsRef}>
+              <button
+                onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+                className="relative p-2 text-muted-foreground hover:text-foreground hover:bg-secondary/40 rounded-xl border border-border/80 transition-all flex items-center justify-center"
+                title="Alertas de Vencimientos"
+              >
+                <Bell className="h-4 w-4" />
+                {renewals && renewals.length > 0 && (
+                  <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[8px] font-black text-destructive-foreground animate-pulse">
+                    {renewals.length}
+                  </span>
+                )}
+              </button>
+
+              {/* Panel Flotante de Notificaciones */}
+              {isNotificationsOpen && (
+                <div className="absolute right-0 mt-2 w-80 max-w-[calc(100vw-2rem)] bg-card border border-border/80 rounded-2xl shadow-2xl z-50 overflow-hidden divide-y divide-border/40 animate-in slide-in-from-top-2 duration-150">
+                  <div className="p-4 bg-secondary/15 flex justify-between items-center">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-foreground flex items-center space-x-1.5">
+                      <Bell className="h-3.5 w-3.5 text-primary" />
+                      <span>Vencimientos (Próx. 7 días)</span>
+                    </h3>
+                    {renewals && renewals.length > 0 && (
+                      <span className="px-2 py-0.5 rounded-full bg-destructive/10 border border-destructive/20 text-[9px] font-extrabold text-destructive">
+                        {renewals.length} alertas
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="max-h-[300px] overflow-y-auto divide-y divide-border/45">
+                    {renewals && renewals.length > 0 ? (
+                      renewals.map((r) => {
+                        const now = new Date()
+                        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+                        const end = new Date(r.end_date)
+                        const diffTime = end.getTime() - today.getTime()
+                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+
+                        let diffText = ''
+                        if (diffDays === 0) diffText = 'Vence hoy'
+                        else if (diffDays === 1) diffText = 'Vence mañana'
+                        else if (diffDays > 1) diffText = `Vence en ${diffDays} días`
+                        else diffText = `Venció hace ${Math.abs(diffDays)} días`
+
+                        return (
+                          <div key={r.id} className="p-3 hover:bg-secondary/20 transition-all flex items-start justify-between gap-2.5">
+                            <div className="min-w-0 flex-1 cursor-pointer" onClick={() => {
+                              setIsNotificationsOpen(false)
+                              navigate(`/clientes/${r.customers?.id}`)
+                            }}>
+                              <p className="text-xs font-bold text-foreground truncate">{r.customers?.full_name}</p>
+                              <p className="text-[10px] text-muted-foreground font-semibold truncate">{r.memberships?.name}</p>
+                              <div className="flex items-center space-x-1 mt-1 text-[9px] font-bold text-rose-400">
+                                <CalendarDays className="h-3 w-3 shrink-0" />
+                                <span>{new Date(r.end_date).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })} ({diffText})</span>
+                              </div>
+                            </div>
+
+                            {r.customers?.phone && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  sendWhatsAppReminder(r.customers!.full_name, r.customers!.phone, r.memberships!.name, r.end_date)
+                                }}
+                                className="p-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 hover:border-emerald-500/30 transition-all shrink-0 active:scale-95"
+                                title="Enviar recordatorio WhatsApp"
+                              >
+                                <MessageSquare className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        )
+                      })
+                    ) : (
+                      <div className="p-8 text-center text-xs text-muted-foreground">
+                        <Bell className="h-6 w-6 text-muted-foreground/45 mx-auto mb-2" />
+                        <p>No hay alertas de vencimiento en los próximos 7 días.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
-            <div className="h-9 w-9 rounded-full bg-secondary border border-border flex items-center justify-center text-muted-foreground">
-              <UserIcon className="h-4 w-4" />
+
+            <div className="flex items-center space-x-3 pl-1">
+              <div className="hidden md:flex flex-col text-right">
+                <span className="text-sm font-semibold">
+                  {user?.user_metadata?.full_name || user?.email}
+                </span>
+                <span className="text-[10px] text-muted-foreground capitalize">
+                  Rol: {currentBadge.label}
+                </span>
+              </div>
+              <div className="h-9 w-9 rounded-full bg-secondary border border-border flex items-center justify-center text-muted-foreground">
+                <UserIcon className="h-4 w-4" />
+              </div>
             </div>
           </div>
         </header>
@@ -250,6 +395,16 @@ export const DashboardLayout: React.FC = () => {
           <Outlet />
         </main>
       </div>
+
+      {/* Modal de Venta Rápida */}
+      {isQuickSaleOpen && (
+        <QuickSaleModal
+          onClose={() => {
+            setIsQuickSaleOpen(false)
+            refetchRenewals()
+          }}
+        />
+      )}
     </div>
   )
 }
