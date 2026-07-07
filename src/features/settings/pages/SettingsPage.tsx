@@ -83,18 +83,38 @@ export const SettingsPage: React.FC = () => {
     },
   })
 
-  // Query para cargar clientes activos en settings
+  // Query para cargar clientes activos en settings (optimizado para carga pesada)
   const { data: customers } = useQuery({
-    queryKey: ['activeCustomersForSettings'],
+    queryKey: ['activeCustomersForSettings', gymSettings?.quick_sale_customer_id],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // Carga un límite de 200 clientes para alto rendimiento
+      const { data: list, error } = await supabase
         .from('customers')
         .select('id, full_name, dni')
         .eq('status', 'active')
         .order('full_name', { ascending: true })
+        .limit(200)
+
       if (error) throw error
-      return data || []
-    }
+
+      // Asegurar que el cliente configurado actualmente esté en la lista
+      if (gymSettings?.quick_sale_customer_id) {
+        const exists = list?.some((c) => c.id === gymSettings.quick_sale_customer_id)
+        if (!exists) {
+          const { data: selectedCust } = await supabase
+            .from('customers')
+            .select('id, full_name, dni')
+            .eq('id', gymSettings.quick_sale_customer_id)
+            .maybeSingle()
+
+          if (selectedCust) {
+            return [selectedCust, ...(list || [])]
+          }
+        }
+      }
+      return list || []
+    },
+    enabled: !!gymSettings
   })
 
   // Query para cargar membresías activas en settings
