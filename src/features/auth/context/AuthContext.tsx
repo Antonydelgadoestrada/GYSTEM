@@ -22,18 +22,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [permissions, setPermissions] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
-  // Usar refs para evitar clausuras obsoletas en onAuthStateChange
-  const userRef = React.useRef<User | null>(null)
-  const roleRef = React.useRef<UserRole | null>(null)
-
-  // Mantener los refs sincronizados
-  React.useEffect(() => {
-    userRef.current = user
-  }, [user])
-
-  React.useEffect(() => {
-    roleRef.current = role
-  }, [role])
+  // Usar ref para rastrear el ID del usuario resuelto y evitar carreras/llamadas duplicadas
+  const lastResolvedUserIdRef = React.useRef<string | null | undefined>(undefined)
 
   const resolveAndSetRole = async (currentUser: User) => {
     // 1. Consultar public.users como la fuente de verdad (evita datos desincronizados del JWT)
@@ -98,74 +88,79 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }
 
+  const handleAuthStateChange = async (newSession: Session | null) => {
+    const currentUser = newSession?.user ?? null
+    
+    // Si el usuario es el mismo que ya resolvimos (o estamos resolviendo), no hacemos nada
+    if (lastResolvedUserIdRef.current !== undefined && currentUser?.id === lastResolvedUserIdRef.current) {
+      setSession(newSession)
+      setUser(currentUser)
+      return
+    }
+
+    console.log('AuthContext: Procesando cambio de sesión para usuario:', currentUser?.id || 'ninguno')
+    lastResolvedUserIdRef.current = currentUser?.id ?? null
+    setSession(newSession)
+    setUser(currentUser)
+
+    setIsLoading(true)
+    try {
+      if (currentUser) {
+        await resolveAndSetRole(currentUser)
+      } else {
+        setRole(null)
+        setPermissions([])
+      }
+    } catch (err) {
+      console.error('AuthContext: Error al procesar rol:', err)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   useEffect(() => {
+    let isMounted = true
+
     const initializeAuth = async () => {
-      setIsLoading(true)
       try {
         const { data: { session } } = await supabase.auth.getSession()
-        setSession(session)
-        const currentUser = session?.user ?? null
-        setUser(currentUser)
-
-        if (currentUser) {
-          await resolveAndSetRole(currentUser)
-        } else {
-          setRole(null)
-          setPermissions([])
+        if (isMounted) {
+          await handleAuthStateChange(session)
         }
       } catch (err) {
         console.error('AuthContext: Error al inicializar sesión:', err)
-      } finally {
-        setIsLoading(false)
+        if (isMounted) {
+          setIsLoading(false)
+        }
       }
     }
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      const currentUser = session?.user ?? null
-      
-      // Si el usuario es el mismo y ya tenemos su rol cargado, no hacemos nada (evita loaders fantasmas en navegación)
-      if (currentUser?.id === userRef.current?.id && roleRef.current !== null) {
-        setSession(session)
-        setUser(currentUser)
-        return
-      }
-
       console.log('AuthContext: onAuthStateChange disparado con evento:', event)
-      setIsLoading(true)
-      try {
-        setSession(session)
-        setUser(currentUser)
-
-        if (currentUser) {
-          await resolveAndSetRole(currentUser)
-        } else {
-          setRole(null)
-          setPermissions([])
-        }
-      } catch (err) {
-        console.error('AuthContext: Error en cambio de estado de sesión:', err)
-      } finally {
-        setIsLoading(false)
+      if (isMounted) {
+        await handleAuthStateChange(session)
       }
     })
 
     initializeAuth()
 
     return () => {
+      isMounted = false
       subscription.unsubscribe()
     }
   }, [])
-
-
 
   const signOut = async () => {
     setIsLoading(true)
     try {
       await supabase.auth.signOut()
+      lastResolvedUserIdRef.current = null
       setUser(null)
       setSession(null)
       setRole(null)
       setPermissions([])
+    } catch (err) {
+      console.error('AuthContext: Error al cerrar sesión:', err)
     } finally {
       setIsLoading(false)
     }
