@@ -10,13 +10,20 @@ import {
   FileSpreadsheet,
   Trash2,
   ExternalLink,
-  Tag
+  Tag,
+  Search
 } from 'lucide-react'
 
 export const ExpensesPage: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const { data: settings } = useGymSettings()
+
+  // Filtros de búsqueda
+  const [search, setSearch] = useState('')
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
+  const [categoryFilter, setCategoryFilter] = useState('all')
 
   // Queries & Mutations
   const { data: expenses, isLoading, isError, error } = useExpenses()
@@ -45,13 +52,38 @@ export const ExpensesPage: React.FC = () => {
 
   const expenseList = expenses || []
 
-  // Cálculos Financieros
-  const totalExpenses = expenseList.reduce((sum, e) => sum + Number(e.amount), 0)
+  // Filtrar egresos
+  const filteredExpenses = expenseList.filter((e) => {
+    const description = e.description?.toLowerCase() || ''
+    const category = e.category?.toLowerCase() || ''
+    const amountStr = String(e.amount)
+    const term = search.toLowerCase()
 
-  // Agrupado por Categorías
-  const categoriesBreakdown = expenseList.reduce((acc: Record<string, number>, e) => {
+    const matchesSearch = description.includes(term) || category.includes(term) || amountStr.includes(term)
+
+    let matchesDate = true
+    if (startDate) {
+      matchesDate = matchesDate && e.expense_date >= startDate
+    }
+    if (endDate) {
+      matchesDate = matchesDate && e.expense_date <= endDate
+    }
+
+    let matchesCategory = true
+    if (categoryFilter !== 'all') {
+      matchesCategory = e.category === categoryFilter
+    }
+
+    return matchesSearch && matchesDate && matchesCategory
+  })
+
+  // Cálculos Financieros basados en egresos filtrados
+  const totalExpenses = filteredExpenses.reduce((sum, e) => sum + Number(e.amount), 0)
+
+  // Agrupado por Categorías basado en egresos filtrados
+  const categoriesBreakdown = filteredExpenses.reduce((acc: Record<string, number>, e) => {
     acc[e.category] = (acc[e.category] || 0) + Number(e.amount)
-    return acc;
+    return acc
   }, {})
 
   const categoryColors: Record<string, string> = {
@@ -128,6 +160,89 @@ export const ExpensesPage: React.FC = () => {
         </div>
       </div>
 
+      {/* Buscador y Filtros */}
+      <div className="bg-card border border-border/60 p-4 rounded-2xl space-y-3">
+        <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Filtros de Búsqueda</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3.5">
+          {/* Descripción / Categoría */}
+          <div className="col-span-1 sm:col-span-2 space-y-1">
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Buscar</span>
+            <div className="relative">
+              <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">
+                <Search className="h-4 w-4" />
+              </span>
+              <input
+                type="text"
+                className="w-full bg-secondary/30 border border-border/80 rounded-xl py-2 pl-9 pr-4 text-sm focus:outline-none focus:border-primary transition-all placeholder:text-muted-foreground/60"
+                placeholder="Buscar por descripción..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* Categoría select */}
+          <div className="space-y-1">
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Categoría</span>
+            <select
+              className="w-full bg-secondary/30 border border-border/80 rounded-xl py-2 px-3 text-sm focus:outline-none focus:border-primary transition-all text-muted-foreground"
+              title="Categoría"
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+            >
+              <option value="all">Todas las Categorías</option>
+              <option value="Renta">Alquiler / Renta</option>
+              <option value="Servicios">Servicios Básicos</option>
+              <option value="Nómina">Nómina / Sueldos</option>
+              <option value="Mantenimiento">Mantenimiento / Aseo</option>
+              <option value="Marketing">Marketing / Publicidad</option>
+              <option value="Otros">Otros Egresos</option>
+            </select>
+          </div>
+
+          {/* Fecha Inicio */}
+          <div className="space-y-1">
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Fecha Desde</span>
+            <input
+              type="date"
+              className="w-full bg-secondary/30 border border-border/80 rounded-xl py-2 px-3 text-sm focus:outline-none focus:border-primary transition-all text-muted-foreground"
+              title="Fecha Inicio"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+            />
+          </div>
+
+          {/* Fecha Fin */}
+          <div className="space-y-1">
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Fecha Hasta</span>
+            <div className="flex space-x-2">
+              <input
+                type="date"
+                className="w-full bg-secondary/30 border border-border/80 rounded-xl py-2 px-3 text-sm focus:outline-none focus:border-primary transition-all text-muted-foreground"
+                title="Fecha Fin"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+              />
+              {(search || startDate || endDate || categoryFilter !== 'all') && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearch('')
+                    setStartDate('')
+                    setEndDate('')
+                    setCategoryFilter('all')
+                  }}
+                  className="px-2 bg-secondary/50 hover:bg-secondary/80 border border-border rounded-xl text-muted-foreground hover:text-foreground transition-all text-xs font-semibold shrink-0"
+                  title="Limpiar Filtros"
+                >
+                  Limpiar
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Listado de Gastos */}
       {isLoading ? (
         <div className="flex flex-col items-center justify-center py-20 space-y-4">
@@ -148,6 +263,14 @@ export const ExpensesPage: React.FC = () => {
             Tu libro de gastos está limpio. Haz clic en "Registrar Gasto" para añadir tu primer egreso.
           </p>
         </div>
+      ) : filteredExpenses.length === 0 ? (
+        <div className="text-center py-20 p-6 bg-card border border-border/60 rounded-2xl">
+          <FileSpreadsheet className="h-12 w-12 text-muted-foreground mx-auto mb-3 opacity-60" />
+          <h3 className="text-lg font-semibold">No se encontraron gastos</h3>
+          <p className="text-sm text-muted-foreground mt-1">
+            Ningún gasto coincide con los parámetros de búsqueda o filtros seleccionados.
+          </p>
+        </div>
       ) : (
         <div className="bg-card border border-border/60 rounded-2xl overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
@@ -163,7 +286,7 @@ export const ExpensesPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/40 text-sm">
-                {expenseList.map((expense) => {
+                {filteredExpenses.map((expense) => {
                   const catClass = categoryColors[expense.category] || categoryColors.Otros
                   return (
                     <tr key={expense.id} className="hover:bg-secondary/10 transition-all">

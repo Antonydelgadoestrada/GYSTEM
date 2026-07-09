@@ -25,6 +25,8 @@ export const PaymentsPage: React.FC = () => {
   const [search, setSearch] = useState('')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState('all')
+  const [statusFilter, setStatusFilter] = useState('all')
   
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
@@ -65,8 +67,27 @@ export const PaymentsPage: React.FC = () => {
     if (endDate) {
       matchesDate = matchesDate && p.payment_date <= endDate
     }
+
+    let matchesPaymentMethod = true
+    if (paymentMethodFilter !== 'all') {
+      const m = p.payment_method.toLowerCase()
+      if (paymentMethodFilter === 'cash') {
+        matchesPaymentMethod = m.includes('efectivo') || m === 'cash'
+      } else if (paymentMethodFilter === 'card') {
+        matchesPaymentMethod = m.includes('tarjeta') || m === 'card'
+      } else if (paymentMethodFilter === 'yape_plin') {
+        matchesPaymentMethod = m.includes('yape') || m.includes('plin')
+      } else if (paymentMethodFilter === 'transfer') {
+        matchesPaymentMethod = m.includes('transferencia') || m === 'transfer'
+      }
+    }
+
+    let matchesStatus = true
+    if (statusFilter !== 'all') {
+      matchesStatus = p.status === statusFilter
+    }
     
-    return matchesSearch && matchesDate
+    return matchesSearch && matchesDate && matchesPaymentMethod && matchesStatus
   }) || []
 
   // Cálculos Financieros basados en cobros FILTRADOS (excluyendo transacciones anuladas)
@@ -178,23 +199,59 @@ export const PaymentsPage: React.FC = () => {
       {/* Buscador y Filtros */}
       <div className="bg-card border border-border/60 p-4 rounded-2xl space-y-3">
         <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Filtros de Búsqueda</h3>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5">
           {/* Nombre / Plan */}
-          <div className="relative col-span-1 md:col-span-2">
-            <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">
-              <Search className="h-4 w-4" />
-            </span>
-            <input
-              type="text"
-              className="w-full bg-secondary/30 border border-border/80 rounded-xl py-2 pl-9 pr-4 text-sm focus:outline-none focus:border-primary transition-all placeholder:text-muted-foreground/60"
-              placeholder="Buscar por atleta, plan o método de pago..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+          <div className="col-span-1 sm:col-span-2 space-y-1">
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Buscar</span>
+            <div className="relative">
+              <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">
+                <Search className="h-4 w-4" />
+              </span>
+              <input
+                type="text"
+                className="w-full bg-secondary/30 border border-border/80 rounded-xl py-2 pl-9 pr-4 text-sm focus:outline-none focus:border-primary transition-all placeholder:text-muted-foreground/60"
+                placeholder="Buscar atleta, plan..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* Medio de Pago select */}
+          <div className="space-y-1">
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Medio de Pago</span>
+            <select
+              className="w-full bg-secondary/30 border border-border/80 rounded-xl py-2 px-3 text-sm focus:outline-none focus:border-primary transition-all text-muted-foreground"
+              title="Medio de Pago"
+              value={paymentMethodFilter}
+              onChange={(e) => setPaymentMethodFilter(e.target.value)}
+            >
+              <option value="all">Todos los Medios</option>
+              <option value="cash">Efectivo</option>
+              <option value="card">Tarjeta</option>
+              <option value="yape_plin">Yape / Plin</option>
+              <option value="transfer">Transferencia</option>
+            </select>
+          </div>
+
+          {/* Estado select */}
+          <div className="space-y-1">
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Estado</span>
+            <select
+              className="w-full bg-secondary/30 border border-border/80 rounded-xl py-2 px-3 text-sm focus:outline-none focus:border-primary transition-all text-muted-foreground"
+              title="Estado"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
+              <option value="all">Todos los Estados</option>
+              <option value="paid">Cobrados</option>
+              <option value="cancelled">Anulados</option>
+            </select>
           </div>
 
           {/* Fecha Inicio */}
-          <div className="relative">
+          <div className="space-y-1">
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Fecha Desde</span>
             <input
               type="date"
               className="w-full bg-secondary/30 border border-border/80 rounded-xl py-2 px-3 text-sm focus:outline-none focus:border-primary transition-all text-muted-foreground"
@@ -205,28 +262,33 @@ export const PaymentsPage: React.FC = () => {
           </div>
 
           {/* Fecha Fin */}
-          <div className="relative flex space-x-2">
-            <input
-              type="date"
-              className="w-full bg-secondary/30 border border-border/80 rounded-xl py-2 px-3 text-sm focus:outline-none focus:border-primary transition-all text-muted-foreground"
-              title="Fecha Fin"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-            />
-            {(search || startDate || endDate) && (
-              <button
-                type="button"
-                onClick={() => {
-                  setSearch('')
-                  setStartDate('')
-                  setEndDate('')
-                }}
-                className="px-2 bg-secondary/50 hover:bg-secondary/80 border border-border rounded-xl text-muted-foreground hover:text-foreground transition-all text-xs font-semibold shrink-0"
-                title="Limpiar Filtros"
-              >
-                Limpiar
-              </button>
-            )}
+          <div className="space-y-1">
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Fecha Hasta</span>
+            <div className="flex space-x-2">
+              <input
+                type="date"
+                className="w-full bg-secondary/30 border border-border/80 rounded-xl py-2 px-3 text-sm focus:outline-none focus:border-primary transition-all text-muted-foreground"
+                title="Fecha Fin"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+              />
+              {(search || startDate || endDate || paymentMethodFilter !== 'all' || statusFilter !== 'all') && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearch('')
+                    setStartDate('')
+                    setEndDate('')
+                    setPaymentMethodFilter('all')
+                    setStatusFilter('all')
+                  }}
+                  className="px-2 bg-secondary/50 hover:bg-secondary/80 border border-border rounded-xl text-muted-foreground hover:text-foreground transition-all text-xs font-semibold shrink-0"
+                  title="Limpiar Filtros"
+                >
+                  Limpiar
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
